@@ -1,0 +1,9 @@
+module qupath.extension.jinput {
+	
+	requires java.desktop;
+	
+	requires slf4j.api;
+	requires jinput;
+	requires qupath.gui.fx;
+
+}

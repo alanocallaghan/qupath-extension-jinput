@@ -1,0 +1,105 @@
+plugins {
+  id 'java-library'
+  id 'maven-publish'
+  // To create a shadow/fat jar, including dependencies
+  id 'com.github.johnrengelman.shadow' version '7.0.0'
+}
+
+repositories {
+    // Use this only for local development!
+    //  mavenLocal()
+
+  maven {
+    url "https://maven.scijava.org/content/repositories/releases"
+  }
+
+  mavenCentral()
+
+  maven {
+    url "https://maven.scijava.org/content/repositories/snapshots"
+  }
+
+}
+
+ext.moduleName = 'qupath.extension.jinput'
+ext.qupathVersion = gradle.ext.qupathVersion
+
+description = "QuPath extension to support the spacemouse (and possibly other 3-D input devices)."
+
+version = "0.3.0"
+
+def libName = "jinput-2.0.5"
+
+dependencies {
+  implementation "io.github.qupath:qupath-gui-fx:${qupathVersion}"
+  implementation group: 'net.java.jinput', name: 'jinput', version: '2.0.5'
+
+  shadow "io.github.qupath:qupath-gui-fx:0.3.0"
+  shadow "org.slf4j:slf4j-api:1.7.30"
+}
+
+processResources {
+  from ("${projectDir}/LICENSE") {
+    into 'META-INF/licenses/'
+  }
+}
+
+tasks.register("copyDependencies", Copy) {
+    description "Copy dependencies into the build directory for use elsewhere"
+    group "QuPath"
+
+    from configurations.default
+    into 'build/libs'
+}
+
+/*
+ * Ensure Java 11 compatibility
+ */
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(11)
+    }
+    if (project.properties['sources'])
+        withSourcesJar()
+    if (project.properties['javadocs'])
+        withJavadocJar()
+}
+
+/*
+ * Manifest info
+ */
+jar {
+    manifest {
+        attributes("Implementation-Title": project.name,
+                "Implementation-Version": archiveVersion,
+                "Automatic-Module-Name": "io.github." + moduleName)
+    }
+}
+
+/*
+ * Create javadocs for all modules/packages in one place.
+ * Use -PstrictJavadoc=true to fail on error with doclint (which is rather strict).
+ */
+def strictJavadoc = findProperty('strictJavadoc')
+if (!strictJavadoc) {
+    tasks.withType(Javadoc) {
+        options.addStringOption('Xdoclint:none', '-quiet')
+    }
+}
+
+javadoc {
+    options.addBooleanOption('html5', true)
+    destinationDir = new File(project.rootDir,"docs")
+}
+
+
+shadowJar {
+  from ("${buildDir}/unpacked/${libName}") {
+    into 'natives/'
+
+    include '*.dll'
+    include '*.jnilib'
+    include '*.so'
+  }
+}
+
