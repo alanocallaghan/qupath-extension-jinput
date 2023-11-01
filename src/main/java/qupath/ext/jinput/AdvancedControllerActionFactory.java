@@ -91,7 +91,7 @@ public class AdvancedControllerActionFactory {
 	 * @return
 	 */
 	private static List<Controller> getCompatibleControllers() {
-		ControllerEnvironment controllerEnvironment = ControllerEnvironment.getDefaultEnvironment(); 
+				ControllerEnvironment controllerEnvironment = ControllerEnvironment.getDefaultEnvironment(); 
 //		controllerEnvironment.addControllerListener(new ControllerListener() {
 //			public void controllerRemoved(ControllerEvent ev) {
 //				System.err.println("ADDED: " + ev);

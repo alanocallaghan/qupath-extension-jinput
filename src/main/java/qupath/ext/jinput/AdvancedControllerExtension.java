@@ -174,12 +174,19 @@ public class AdvancedControllerExtension implements QuPathExtension, GitHubProje
 	 * @throws IllegalArgumentException
 	 */
 	private static boolean loadNativeLibrary() throws URISyntaxException, IOException, NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+
+		if (nativeLibraryLoaded) {
+			logger.info("Native library already loaded, skipping");
+			return true;
+		}
+
 		URL url = AdvancedControllerExtension.class.getClassLoader().getResource("natives");
 		logger.debug("JInput url: {}", url);
 		if (url == null)
 			return false;
 		URI uri = url.toURI();
 		Path tempDirPath = null;
+
 		if (uri.getScheme().equals("jar")) {
 			try (var fs = FileSystems.newFileSystem(uri, Map.of())) {
 				var pathRoot = fs.getPath("natives");
@@ -188,14 +195,16 @@ public class AdvancedControllerExtension implements QuPathExtension, GitHubProje
 		} else {
 			//FIXME Not sure what to put here...
 			//path = Files.find(Paths.get(uri), 1, createMatcher()).findFirst().orElse(null);
+			return false;
 		}
+
 		if (Files.isDirectory(tempDirPath)) {
 			logger.trace("Setting {} as the \"net.java.games.input.librarypath\"", tempDirPath);
-
+		
 			//For jinput, we need to set a system variable
 			System.setProperty("net.java.games.input.librarypath", tempDirPath.toAbsolutePath().toString());
 			
-			//Not sure if this is going to help
+			//Not sure if this is going to help (we have more than one, and JInput does its own initialisation)
 			//System.load(path.toAbsolutePath().toString());
 			
 			// Try to update for the providers we use
@@ -235,26 +244,13 @@ public class AdvancedControllerExtension implements QuPathExtension, GitHubProje
 		logger.debug("Extract native libraries to: {}", tempDir);
 
 		for (Path path : fileList) {
-			logger.debug("Native library to extract: {}", path);
+			logger.debug("Extracting: {}", path);
 			Path tempFile = tempDir.resolve(pathRoot.relativize(path).toString());
 			logger.trace("Requesting delete on exit");
 			tempFile.toFile().deleteOnExit();
 			logger.debug("Copying {} to {}", path, tempFile);
 			Files.copy(path, tempFile);
 		}
-
-		/*
-		var path = Files.find(pathRoot, 1, createMatcher()).findFirst().orElse(null);
-		if (path == null)
-			return null;
-		logger.debug("JInput path to extract: {}", path);
-		Path tempFile = tempDir.resolve(pathRoot.relativize(path).toString());
-		logger.trace("Requesting delete on exit");
-		tempFile.toFile().deleteOnExit();
-		logger.debug("Copying {} to {}", path, tempFile);
-		Files.copy(path, tempFile);
-		logger.debug("Copy completed, new file size {}", tempFile.toFile().length());
-		*/
 
 		return tempDir;
 	}
