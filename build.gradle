@@ -30,9 +30,15 @@ version = "0.3.0"
 
 def libName = "jinput-2.0.5"
 
+configurations {
+    jinputJar
+}
+
 dependencies {
   implementation "io.github.qupath:qupath-gui-fx:${qupathVersion}"
-  implementation group: 'net.java.jinput', name: 'jinput', version: '2.0.5'
+  implementation 'net.java.jinput:jinput:2.0.5'
+  jinputJar 'net.java.jinput:jinput:2.0.5'
+
 
   shadow "io.github.qupath:qupath-gui-fx:0.3.0"
   shadow "org.slf4j:slf4j-api:1.7.30"
@@ -44,6 +50,24 @@ processResources {
   }
 }
 
+tasks.register("extractNativeLibs", Copy) {
+    def jinputJarFiles = configurations.jinputJar.files
+    def outputDirectory = "${buildDir}/natives/"
+
+    from files(jinputJarFiles).collect {
+      zipTree(it)
+    }
+    include '*.dll'
+    include '*.jnilib'
+    include '*.so'
+    into outputDirectory
+    println "Destination directory: ${outputDirectory}"
+}
+
+// Make sure the extraction task runs before the jar task
+jar.dependsOn extractNativeLibs
+
+/*
 tasks.register("copyDependencies", Copy) {
     description "Copy dependencies into the build directory for use elsewhere"
     group "QuPath"
@@ -51,6 +75,7 @@ tasks.register("copyDependencies", Copy) {
     from configurations.default
     into 'build/libs'
 }
+*/
 
 /*
  * Ensure Java 11 compatibility
@@ -73,6 +98,10 @@ jar {
         attributes("Implementation-Title": project.name,
                 "Implementation-Version": archiveVersion,
                 "Automatic-Module-Name": "io.github." + moduleName)
+    }
+
+    into("natives") {
+      from("$buildDir/natives")
     }
 }
 
@@ -102,4 +131,7 @@ shadowJar {
     include '*.so'
   }
 }
+
+// Add the task to the build process
+//build.dependsOn extractNativeLibs
 
