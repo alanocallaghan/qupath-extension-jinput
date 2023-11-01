@@ -31,11 +31,11 @@ You might then need to restart QuPath (but not your computer).
 You can build the extension with
 
 ```bash
-gradlew clean shadowJar
+gradlew clean build
 ```
 
 The output will be under `build/libs`.
 
-This should include the extension, *jinput* and its associated native libraries in a single jar file that can be dragged on top of QuPath for installation in the extensions directory.
+This should include the extension, *jinput* (in /net/java/games/*) and its associated native libraries (in /natives), all in a single jar file that can be dragged on top of QuPath for installation in the extensions directory.
 
-> Note that you need `shadowJar` rather than `build` to include the advanced input library itself (TODO - need to check this).
+When the extension is initialised, the native libraries (*.dlls in Windows, *.so in Linux and *.jni in MacOSX) are stored in a temporary folder which is removed when QuPath is closed.
