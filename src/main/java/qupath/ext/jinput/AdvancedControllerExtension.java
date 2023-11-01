@@ -23,20 +23,39 @@
 
 package qupath.ext.jinput;
 
+import java.awt.Point;
+import java.awt.geom.Point2D.Float;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.function.BiPredicate;
+import java.util.stream.Collectors;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javafx.beans.property.BooleanProperty;
+import qupath.lib.common.GeneralTools;
 import qupath.lib.gui.QuPathGUI;
 import qupath.lib.gui.extensions.GitHubProject;
 import qupath.lib.gui.extensions.QuPathExtension;
-import qupath.lib.gui.viewer.tools.QuPathPenManager;
-import qupath.lib.gui.viewer.tools.QuPathPenManager.PenInputManager;
+//import qupath.lib.gui.viewer.tools.QuPathPenManager;
+//import qupath.lib.gui.viewer.tools.QuPathPenManager.PenInputManager;
 
 import qupath.lib.gui.dialogs.Dialogs;
 import qupath.lib.gui.panes.PreferencePane;
 import qupath.lib.gui.prefs.PathPrefs;
-import qupath.ext.jinput.AdvancedControllerActionFactory;
+//import qupath.ext.jinput.AdvancedControllerActionFactory;
 
 /**
  * QuPath extension to add advanced input controller support for browsing whole slide images, 
@@ -71,7 +90,21 @@ public class AdvancedControllerExtension implements QuPathExtension, GitHubProje
 		requestAdvancedControllers.set(request);
 	}
 	
-	private static boolean isInstalled = false;
+	private static boolean alreadyInstalled = false;
+
+	private static boolean nativeLibraryLoaded = false;
+
+	static {
+		try {
+			nativeLibraryLoaded = loadNativeLibrary();
+			if (nativeLibraryLoaded)
+				logger.debug("Native library loaded");
+			else
+				logger.debug("Unable to preload JInput native library (I couldn't find it)");
+		} catch (Throwable t) {
+			logger.warn("Unable to preload JInput native library: " + t.getLocalizedMessage(), t);
+		}
+	}
 	
     @Override
     public GitHubRepo getRepository() {
@@ -80,11 +113,16 @@ public class AdvancedControllerExtension implements QuPathExtension, GitHubProje
 
 	@Override
 	public void installExtension(QuPathGUI qupath) {
-		if (isInstalled) {
+		if (alreadyInstalled) {
 			logger.warn("Extension already installed!");
 			return;
 		}
-		isInstalled = true;
+		try {
+			loadNativeLibrary();
+		} catch (Throwable t) {
+			logger.warn("Unable to preload JInput native library: " + t.getLocalizedMessage(), t);
+		}
+		alreadyInstalled = true;
 		
 		// Add preference
 		PreferencePane panel = qupath.getPreferencePane();
@@ -126,6 +164,125 @@ public class AdvancedControllerExtension implements QuPathExtension, GitHubProje
 		});
 	}
 
+	/**
+	 * Try to load native library from the extension jar.
+	 * @throws URISyntaxException
+	 * @throws IOException
+	 * @throws SecurityException
+	 * @throws NoSuchFieldException
+	 * @throws IllegalAccessException
+	 * @throws IllegalArgumentException
+	 */
+	private static boolean loadNativeLibrary() throws URISyntaxException, IOException, NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+		URL url = AdvancedControllerExtension.class.getClassLoader().getResource("natives");
+		logger.debug("JInput url: {}", url);
+		if (url == null)
+			return false;
+		URI uri = url.toURI();
+		Path tempDirPath = null;
+		if (uri.getScheme().equals("jar")) {
+			try (var fs = FileSystems.newFileSystem(uri, Map.of())) {
+				var pathRoot = fs.getPath("natives");
+				tempDirPath = extractLibs(pathRoot);
+			}
+		} else {
+			//FIXME Not sure what to put here...
+			//path = Files.find(Paths.get(uri), 1, createMatcher()).findFirst().orElse(null);
+		}
+		if (Files.isDirectory(tempDirPath)) {
+			logger.trace("Setting {} as the \"net.java.games.input.librarypath\"", tempDirPath);
+
+			//For jinput, we need to set a system variable
+			System.setProperty("net.java.games.input.librarypath", tempDirPath.toAbsolutePath().toString());
+			
+			//Not sure if this is going to help
+			//System.load(path.toAbsolutePath().toString());
+			
+			// Try to update for the providers we use
+			/*
+			logger.trace("Updating cocoa");
+			setLoaded(CocoaProvider.class);
+			logger.trace("Updating xinput");
+			setLoaded(XinputProvider.class);
+			logger.trace("Updating wintab");
+			setLoaded(WintabProvider.class);
+			*/
+
+			return true;
+		} else {
+			logger.debug("Path is not a directory: {}", tempDirPath);
+			return false;
+		}
+	}
+	
+	/**
+	 * Extract native library to a temp file.
+	 * @param pathRoot
+	 * @return
+	 * @throws IOException
+	 */
+	private static Path extractLibs(Path pathRoot) throws IOException {
+        List<Path> fileList = Files.find(pathRoot, 1, createMatcher())
+            .collect(Collectors.toList());
+
+        if (fileList.isEmpty()) {
+			logger.debug("Could not find any compatible native files in the JAR");
+			return null;
+		}
+
+		Path tempDir = Files.createTempDirectory("qupath-");
+		tempDir.toFile().deleteOnExit();
+		logger.debug("Extract native libraries to: {}", tempDir);
+
+		for (Path path : fileList) {
+			logger.debug("Native library to extract: {}", path);
+			Path tempFile = tempDir.resolve(pathRoot.relativize(path).toString());
+			logger.trace("Requesting delete on exit");
+			tempFile.toFile().deleteOnExit();
+			logger.debug("Copying {} to {}", path, tempFile);
+			Files.copy(path, tempFile);
+		}
+
+		/*
+		var path = Files.find(pathRoot, 1, createMatcher()).findFirst().orElse(null);
+		if (path == null)
+			return null;
+		logger.debug("JInput path to extract: {}", path);
+		Path tempFile = tempDir.resolve(pathRoot.relativize(path).toString());
+		logger.trace("Requesting delete on exit");
+		tempFile.toFile().deleteOnExit();
+		logger.debug("Copying {} to {}", path, tempFile);
+		Files.copy(path, tempFile);
+		logger.debug("Copy completed, new file size {}", tempFile.toFile().length());
+		*/
+
+		return tempDir;
+	}
+
+	private static BiPredicate<Path, BasicFileAttributes> createMatcher() {
+		if (GeneralTools.isMac())
+			return (p, a) -> matchLib(p, a, ".jnilib", ".dylib");
+		if (GeneralTools.isWindows())
+			return (p, a) -> matchLib(p, a, "64.dll");
+		if (GeneralTools.isMac())
+			return (p, a) -> matchLib(p, a, "64.so");
+		return (p, a) -> false;
+	}
+
+	private static boolean matchLib(Path path, BasicFileAttributes attr, String... exts) {
+		if (attr.isDirectory())
+			return false;
+		var name = path.getFileName().toString().toLowerCase();
+		logger.trace("Checking name: {} against {}", name, Arrays.asList(exts));
+		if (!name.startsWith("jinput") && !name.startsWith("libjinput"))
+			return false;
+		for (var ext : exts) {
+			if (name.endsWith(ext))
+				return true;
+		}
+		return false;
+	}
+
 	@Override
 	public String getName() {
 		return "Advanced controllers extension";
@@ -135,9 +292,11 @@ public class AdvancedControllerExtension implements QuPathExtension, GitHubProje
 	public String getDescription() {
 		String description = "Add support for advanced input controllers (e.g. 3D mice for slide navigation) using JInput - https://java.net/projects/jinput";
 		return description;
-//		if (isOn)
-//			return description + "\n(Currently on)";
-//		return description + "\n(Currently off)";
+/*
+		if (isOn)
+			return description + "\n(Currently on)";
+		return description + "\n(Currently off)";
+*/
 	}
 
 }

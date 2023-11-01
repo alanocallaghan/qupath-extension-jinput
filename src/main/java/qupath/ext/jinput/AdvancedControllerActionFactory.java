@@ -106,6 +106,7 @@ public class AdvancedControllerActionFactory {
 //		});
 		Controller[] controllers = controllerEnvironment.getControllers();
 		List<Controller> advancedControllers = new ArrayList<>();
+		logger.trace("Looking for controllers"); 
 		for (Controller controller : controllers) {
 			// For now, we only support 'Space Navigator' controllers... being more permissive can cause strange things to happen
 			// (in particular, things go very badly wrong with VirtualBox)
