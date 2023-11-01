@@ -28,19 +28,16 @@ description = "QuPath extension to support the spacemouse (and possibly other 3-
 
 version = "0.3.0"
 
-def libName = "jinput-2.0.5"
-
 configurations {
     jinputJar
 }
 
 dependencies {
   implementation "io.github.qupath:qupath-gui-fx:${qupathVersion}"
-  implementation 'net.java.jinput:jinput:2.0.5'
-  jinputJar 'net.java.jinput:jinput:2.0.5'
+  implementation 'net.java.jinput:jinput:2.0.7'
+  jinputJar 'net.java.jinput:jinput:2.0.7'
 
-
-  shadow "io.github.qupath:qupath-gui-fx:0.3.0"
+  shadow "io.github.qupath:qupath-gui-fx:0.4.0"
   shadow "org.slf4j:slf4j-api:1.7.30"
 }
 
@@ -55,6 +52,7 @@ tasks.register("extractNativeLibs", Copy) {
     def outputDirectory = "${buildDir}/natives/"
 
     from files(jinputJarFiles).collect {
+      //println(it)
       zipTree(it)
     }
     include '*.dll'
@@ -66,16 +64,6 @@ tasks.register("extractNativeLibs", Copy) {
 
 // Make sure the extraction task runs before the jar task
 jar.dependsOn extractNativeLibs
-
-/*
-tasks.register("copyDependencies", Copy) {
-    description "Copy dependencies into the build directory for use elsewhere"
-    group "QuPath"
-
-    from configurations.default
-    into 'build/libs'
-}
-*/
 
 /*
  * Ensure Java 11 compatibility
@@ -100,9 +88,17 @@ jar {
                 "Automatic-Module-Name": "io.github." + moduleName)
     }
 
-    into("natives") {
-      from("$buildDir/natives")
+    into("") {
+        from {
+            configurations.jinputJar.collect { it.isDirectory() ? it : zipTree(it) }
+        }
+        include '**/*.class'
     }
+
+    into("natives") {
+        from("$buildDir/natives")
+    }
+
 }
 
 /*
@@ -122,15 +118,12 @@ javadoc {
 }
 
 
+/*
 shadowJar {
-  from ("${buildDir}/unpacked/${libName}") {
-    into 'natives/'
+    mergeServiceFiles()
 
-    include '*.dll'
-    include '*.jnilib'
-    include '*.so'
-  }
 }
+*/
 
 // Add the task to the build process
 //build.dependsOn extractNativeLibs
