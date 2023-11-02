@@ -43,6 +43,7 @@ import qupath.lib.gui.QuPathGUI;
 import net.java.games.input.Controller;
 import net.java.games.input.ControllerEnvironment;
 import net.java.games.input.Controller.Type;
+import net.java.games.input.Component;
 
 
 /**
@@ -114,6 +115,9 @@ public class AdvancedControllerActionFactory {
 //			if (controller.getType() == Type.STICK && controller.getName().toLowerCase().equals("spacenavigator")) {
 			if (controller.getType() == Type.STICK) {
 				logger.info("Registering controller: " + controller.getName() + ", " + controller.getType() ); 
+				for (Component c : controller.getComponents()) {
+					logger.info("has: \"" + c.getName() + "\""); 
+				}
 				advancedControllers.add(controller);
 			} else
 				logger.trace("Skipping controller: " + controller.getName() + ", " + controller.getType() ); 
