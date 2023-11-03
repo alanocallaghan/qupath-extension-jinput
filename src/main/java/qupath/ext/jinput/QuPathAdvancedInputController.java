@@ -144,7 +144,8 @@ public class QuPathAdvancedInputController {
 			// Zooming in or out
 			int zoom = 0;
 			for (Component c : controller.getComponents()) {
-				String name = c.getName();
+				//Use a non-locale version of c.getName()
+				String name = c.getIdentifier().toString();
 				if ("x".equals(name)) {
 					x = c.getPollData() * scrollScale;
 				} else if ("y".equals(name)) {

@@ -116,7 +116,7 @@ public class AdvancedControllerActionFactory {
 			if (controller.getType() == Type.STICK) {
 				logger.info("Registering controller: " + controller.getName() + ", " + controller.getType() ); 
 				for (Component c : controller.getComponents()) {
-					logger.info("has: \"" + c.getName() + "\""); 
+					logger.info("has: \"" + c.getName() + "\" is \"" + c.getIdentifier().toString() + "\""); 
 				}
 				advancedControllers.add(controller);
 			} else
