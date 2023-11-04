@@ -23,6 +23,7 @@ repositories {
 
 ext.moduleName = 'qupath.extension.jinput'
 ext.qupathVersion = gradle.ext.qupathVersion
+ext.jinputVersion = "2.0.9"
 
 description = "QuPath extension to support the spacemouse (and possibly other 3-D input devices)."
 
@@ -30,16 +31,24 @@ version = "0.3.0"
 
 configurations {
     jinputJar
+    jinputNativeJar
 }
 
 dependencies {
+  def jinputDependency = "net.java.jinput:jinput:${jinputVersion}"
+  def jinputNativeDependency = "${jinputDependency}:natives-all"
+
   implementation "io.github.qupath:qupath-gui-fx:${qupathVersion}"
-  implementation 'net.java.jinput:jinput:2.0.7'
-  jinputJar 'net.java.jinput:jinput:2.0.7'
+  implementation jinputDependency
+  implementation jinputNativeDependency
+
+  jinputJar jinputDependency
+  jinputNativeJar jinputNativeDependency
 
   shadow "io.github.qupath:qupath-gui-fx:0.4.0"
   shadow "org.slf4j:slf4j-api:1.7.30"
 }
+
 
 processResources {
   from ("${projectDir}/LICENSE") {
@@ -48,11 +57,11 @@ processResources {
 }
 
 tasks.register("extractNativeLibs", Copy) {
-    def jinputJarFiles = configurations.jinputJar.files
+    def jinputNativeJarFiles = configurations.jinputNativeJar.files
     def outputDirectory = "${buildDir}/natives/"
 
-    from files(jinputJarFiles).collect {
-      //println(it)
+    from files(jinputNativeJarFiles).collect {
+      println(it)
       zipTree(it)
     }
     include '*.dll'
