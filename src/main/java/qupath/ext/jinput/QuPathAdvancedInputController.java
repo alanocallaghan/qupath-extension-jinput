@@ -50,6 +50,12 @@ public class QuPathAdvancedInputController {
 		
 		private boolean zoomInPressed = false;
 		private boolean zoomOutPressed = false;
+
+        //We'll use these to compare new and old values
+        private double old_dx = 0;
+        private double old_dy = 0;
+        private double old_dz = 0;
+        private double old_dr = 0;
 		
 //		private long lastTimestamp = 0;
 		
@@ -128,21 +134,25 @@ public class QuPathAdvancedInputController {
 				magnification = serverMag / downsample;
 			}
 			
-			if (magnification >= 40-0.0001)
+			if (magnification > 80)
 				scrollScale = 25;
-			else if (magnification >= 4)
-				scrollScale = 50;
-			else
+            else if (magnification > 40)
 				scrollScale = 100;
+			else if (magnification >= 4)
+				scrollScale = 200;
+			else
+				scrollScale = 1000;
 
 			
-			double dx = 0;
-			double dy = 0;
-			double dz = 0;
-            double dr = 0; //rotation
-			
+			double dx = old_dx;
+			double dy = old_dy;
+			double dz = old_dz;
+            double dr = old_dr; //rotation
+            double rot = viewer.getRotation();
+
 			// Zooming in or out
 			int zoom = 0;
+
 			for (Component c : controller.getComponents()) {
 				//Use a non-locale version of c.getName()
 				String name = c.getIdentifier().toString();
@@ -150,9 +160,9 @@ public class QuPathAdvancedInputController {
 				if (Math.abs(polled) < c.getDeadZone()) polled = 0;
 
 				if ("x".equals(name)) {
-					dx = polled * scrollScale;
+					dx = polled;
 				} else if ("y".equals(name)) {
-					dy = polled * scrollScale;
+					dy = polled;
 				} else if ("z".equals(name)) {
 					dz = polled;
 				} else if ("rx".equals(name)) {
@@ -175,45 +185,43 @@ public class QuPathAdvancedInputController {
 						zoomOutPressed = false;
 				}
 			}
+
+            boolean xMoved = Math.abs(old_dx - dx) > 1e-5;
+            boolean yMoved = Math.abs(old_dy - dy) > 1e-5;
+            boolean zMoved = Math.abs(old_dz - dz) > 1e-5;
+            boolean rMoved = Math.abs(old_dr - dr) > 1e-5;
 			
+            if ( !xMoved && !yMoved && !zMoved && !rMoved && zoom == 0)
+                return true;
 			
+            old_dx = dx; old_dy = dy; old_dz = dz; old_dr = dr;
+
 			if (zoom != 0) {
 				if (zoom > 0)
 					downsample = serverMag / getHigherMagnification(magnification);
 				else
 					downsample = serverMag / getLowerMagnification(magnification);					
 				viewer.setDownsampleFactor(downsample, -1, -1);
-			} else if (Math.abs(dz * 20) >= 1) {
+			} else if (zMoved && Math.abs(dz * 20) >= 1) {
 				if (dz < 0)
 					viewer.zoomIn((int)(Math.abs(dz * 20)));
 				else
 					viewer.zoomOut((int)(Math.abs(dz * 20)));
-				// If we're zooming this way, we're done - ignore other small x,y adjustments
 
-				//System.out.println("dx: " + dx + ", dy: " + dy + ", dz: " + dz + ", dr: " + dr);
-				return true;
+				// If we're zooming this way, we're done - ignore other small x,y adjustments
+                //return true;
 			}
 
             //Here we test the rotation
-			if (Math.abs(dr * 20) >= 1) {
-                dr = dr/4;
-                viewer.setRotation(viewer.getRotation() + dr);
-
-				viewer.setCenterPixelLocation(
-						viewer.getCenterPixelX() + dx * scrollScale,
-						viewer.getCenterPixelY() + dy * scrollScale);
-
+			if (rMoved) {
+                dr = dr/8;
+                viewer.setRotation(rot + dr);
             }
 			
-            else if (dx != 0 || dy != 0) {
-                dx = dx/4;
-                dy = dy/4;
-
+            if (xMoved || yMoved) {
 				// Shift as required - correcting for rotation (Pete's code)
-				//double downsampleRatio = v.getDownsampleFactor() / downsample;
-                double rot = -viewer.getRotation();
-                double sin = Math.sin(rot);
-                double cos = Math.cos(rot);
+                double sin = Math.sin(-rot);
+                double cos = Math.cos(-rot);
 
                 double dx2 = dx * scrollScale;
                 double dy2 = dy * scrollScale;
@@ -226,6 +234,7 @@ public class QuPathAdvancedInputController {
                         viewer.getCenterPixelY() + dy3);
             }
             
+            //System.out.println("rot:" + rot + " dx: " + dx + ", dy: " + dy + ", dz: " + dz + ", dr: " + dr + "scrollScale: "+scrollScale);
 			return true;
 		}
 
