@@ -121,6 +121,7 @@ public class AdvancedControllerExtension implements QuPathExtension, GitHubProje
 			loadNativeLibrary();
 		} catch (Throwable t) {
 			logger.warn("Unable to preload JInput native library: " + t.getLocalizedMessage(), t);
+			return;
 		}
 		alreadyInstalled = true;
 		
@@ -199,7 +200,7 @@ public class AdvancedControllerExtension implements QuPathExtension, GitHubProje
 		}
 
 		if (Files.isDirectory(tempDirPath)) {
-			logger.trace("Setting {} as the \"net.java.games.input.librarypath\"", tempDirPath);
+			logger.debug("Setting {} as the \"net.java.games.input.librarypath\"", tempDirPath);
 		
 			//For jinput, we need to set a system variable
 			System.setProperty("net.java.games.input.librarypath", tempDirPath.toAbsolutePath().toString());
@@ -260,7 +261,7 @@ public class AdvancedControllerExtension implements QuPathExtension, GitHubProje
 			return (p, a) -> matchLib(p, a, ".jnilib", ".dylib");
 		if (GeneralTools.isWindows())
 			return (p, a) -> matchLib(p, a, "64.dll");
-		if (GeneralTools.isMac())
+		if (GeneralTools.isLinux())
 			return (p, a) -> matchLib(p, a, "64.so");
 		return (p, a) -> false;
 	}
