@@ -90,7 +90,6 @@ public class QuPathAdvancedInputController {
 			return 0.25;
 		}
 
-		
 		/**
 		 * Return true if the update is successful and the controller remains in a valid state, false otherwise.
 		 * 
@@ -147,28 +146,28 @@ public class QuPathAdvancedInputController {
 			for (Component c : controller.getComponents()) {
 				//Use a non-locale version of c.getName()
 				String name = c.getIdentifier().toString();
+				double polled = c.getPollData();
+				if (Math.abs(polled) < c.getDeadZone()) polled = 0;
+
 				if ("x".equals(name)) {
-					dx = c.getPollData() * scrollScale;
+					dx = polled * scrollScale;
 				} else if ("y".equals(name)) {
-					dy = c.getPollData() * scrollScale;
+					dy = polled * scrollScale;
 				} else if ("z".equals(name)) {
-					dz = c.getPollData();
-					//c.getPollData();
+					dz = polled;
 				} else if ("rx".equals(name)) {
-					c.getPollData();
 				} else if ("ry".equals(name)) {
-					c.getPollData();
 				} else if ("rz".equals(name)) {
-					dr = c.getPollData();
+					dr = polled;
 				} else if ("0".equals(name)) {
-					if (c.getPollData() != 0) {
+					if (polled != 0) {
 						if (!zoomInPressed) // Don't zoom again if the button was already pressed
 							zoom -= 1;						
 						zoomInPressed = true;
 				} else
 						zoomInPressed = false;
 				} else if ("1".equals(name)) {
-					if (c.getPollData() != 0) {
+					if (polled != 0) {
 						if (!zoomOutPressed) // Don't zoom again if the button was already pressed
 							zoom += 1;	
 						zoomOutPressed = true;
