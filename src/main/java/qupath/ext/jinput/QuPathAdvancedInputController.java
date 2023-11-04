@@ -137,9 +137,10 @@ public class QuPathAdvancedInputController {
 				scrollScale = 100;
 
 			
-			double x = 0;
-			double y = 0;
-			double rz = 0;
+			double dx = 0;
+			double dy = 0;
+			double dz = 0;
+            double dr = 0; //rotation
 			
 			// Zooming in or out
 			int zoom = 0;
@@ -147,17 +148,18 @@ public class QuPathAdvancedInputController {
 				//Use a non-locale version of c.getName()
 				String name = c.getIdentifier().toString();
 				if ("x".equals(name)) {
-					x = c.getPollData() * scrollScale;
+					dx = c.getPollData() * scrollScale;
 				} else if ("y".equals(name)) {
-					y = c.getPollData() * scrollScale;
+					dy = c.getPollData() * scrollScale;
 				} else if ("z".equals(name)) {
-					c.getPollData();
+					dz = c.getPollData();
+					//c.getPollData();
 				} else if ("rx".equals(name)) {
 					c.getPollData();
 				} else if ("ry".equals(name)) {
 					c.getPollData();
 				} else if ("rz".equals(name)) {
-					rz = c.getPollData();
+					dr = c.getPollData();
 				} else if ("0".equals(name)) {
 					if (c.getPollData() != 0) {
 						if (!zoomInPressed) // Don't zoom again if the button was already pressed
@@ -182,23 +184,49 @@ public class QuPathAdvancedInputController {
 				else
 					downsample = serverMag / getLowerMagnification(magnification);					
 				viewer.setDownsampleFactor(downsample, -1, -1);
-			} else if (Math.abs(rz * 20) >= 1) {
-				if (rz < 0)
-					viewer.zoomIn((int)(Math.abs(rz * 20)));
+			} else if (Math.abs(dz * 20) >= 1) {
+				if (dz < 0)
+					viewer.zoomIn((int)(Math.abs(dz * 20)));
 				else
-					viewer.zoomOut((int)(Math.abs(rz * 20)));
+					viewer.zoomOut((int)(Math.abs(dz * 20)));
 				// If we're zooming this way, we're done - ignore other small x,y adjustments
+
+				//System.out.println("dx: " + dx + ", dy: " + dy + ", dz: " + dz + ", dr: " + dr);
 				return true;
-				//					System.out.println("rx: " + rx + ", ry: " + ry + ", rz: " + rz);
 			}
-			
-			
-			if (x != 0 || y != 0) {
+
+            //Here we test the rotation
+			if (Math.abs(dr * 20) >= 1) {
+                dr = dr/4;
+                viewer.setRotation(viewer.getRotation() + dr);
+
 				viewer.setCenterPixelLocation(
-						viewer.getCenterPixelX() + x * scrollScale,
-						viewer.getCenterPixelY() + y * scrollScale);
-			}
+						viewer.getCenterPixelX() + dx * scrollScale,
+						viewer.getCenterPixelY() + dy * scrollScale);
+
+            }
 			
+            else if (dx != 0 || dy != 0) {
+                dx = dx/4;
+                dy = dy/4;
+
+				// Shift as required - correcting for rotation (Pete's code)
+				//double downsampleRatio = v.getDownsampleFactor() / downsample;
+                double rot = -viewer.getRotation();
+                double sin = Math.sin(rot);
+                double cos = Math.cos(rot);
+
+                double dx2 = dx * scrollScale;
+                double dy2 = dy * scrollScale;
+
+                double dx3 = cos * dx2 - sin * dy2;
+                double dy3 = sin * dx2 + cos * dy2;
+
+                viewer.setCenterPixelLocation(
+                        viewer.getCenterPixelX() + dx3,
+                        viewer.getCenterPixelY() + dy3);
+            }
+            
 			return true;
 		}
 
