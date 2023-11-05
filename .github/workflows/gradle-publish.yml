@@ -8,8 +8,13 @@
 name: Gradle Package
 
 on:
-  release:
-    types: [created]
+  push:
+    branches: [ main ]
+    tags:
+      - 'v*.*.*' # We will publish new version for tag which follows 'v*.*.*' format
+
+env:
+  SERVICE_NAME: qupath-extension-jinput
 
 jobs:
   build:
@@ -41,5 +46,43 @@ jobs:
       with:
         arguments: publish
       env:
-        USERNAME: ${{ github.actor }}
-        TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TOKEN: ${{ secrets.JAVA_TOKEN }}
+
+  determine_should_publish_new_version: # Publish new version for new tags
+    runs-on: ubuntu-latest
+    outputs:
+      PUBLISH_NEW_VERSION: ${{ steps.determine_should_publish_new_version.outputs.PUBLISH_NEW_VERSION }}
+    steps:
+      - name: Checkout local repository
+        uses: actions/checkout@v4
+      - name: Determine should publish docker image
+        id: determine_should_publish_new_version
+        run: |
+          PUBLISH_NEW_VERSION=false
+          if [[ $(git tag --points-at HEAD) != '' ]]; then
+            PUBLISH_NEW_VERSION=true
+          fi
+          echo "PUBLISH_NEW_VERSION=${PUBLISH_NEW_VERSION}" >> $GITHUB_OUTPUT
+
+  publish-jar:
+    runs-on: ubuntu-latest
+    needs: [ determine_should_publish_new_version, build]
+    if: ${{ needs.determine_should_publish_new_version.outputs.PUBLISH_NEW_VERSION == 'true' }}
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout local repository
+        uses: actions/checkout@v4
+        with:
+          path: ${{ github.workspace }}/${{ env.SERVICE_NAME }}
+      - uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+      - name: Publish jar
+        run: ./gradlew publish --no-daemon
+        working-directory: ${{ github.workspace }}/${{ env.SERVICE_NAME }}/
+        env:
+          GITHUB_TOKEN: ${{ secrets.JAVA_TOKEN }}
