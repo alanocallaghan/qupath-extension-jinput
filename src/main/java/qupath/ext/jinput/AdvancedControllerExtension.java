@@ -77,6 +77,7 @@ public class AdvancedControllerExtension implements QuPathExtension, GitHubProje
 	// Request attempting to load 3D mouse support... needs to be restarted & the mouse plugged in to take effect
 	// (And adds ~0.7s to startup time on test Mac Pro)
 	private static BooleanProperty requestAdvancedControllers = PathPrefs.createPersistentPreference("requestAdvancedControllers", false);
+	private static BooleanProperty invertControllerScrolling = PathPrefs.createPersistentPreference("invertControllerScrolling", false);
 
 	public static BooleanProperty requestAdvancedControllersProperty() {
 		return requestAdvancedControllers;
@@ -88,6 +89,18 @@ public class AdvancedControllerExtension implements QuPathExtension, GitHubProje
 
 	public static void setRequestAdvancedControllers(boolean request) {
 		requestAdvancedControllers.set(request);
+	}
+	
+	public static BooleanProperty invertControllerScrollingProperty() {
+		return invertControllerScrolling;
+	}
+
+	public static boolean getInvertControllerScrolling() {
+		return invertControllerScrolling.get();
+	}
+
+	public static void setInvertControllerScrolling(boolean request) {
+		invertControllerScrolling.set(request);
 	}
 	
 	private static boolean alreadyInstalled = false;
@@ -150,7 +163,7 @@ public class AdvancedControllerExtension implements QuPathExtension, GitHubProje
 				logger.debug("{}", e);
 			}
 		}
-		
+
 		// Add a listener to handle property changes
 		requestAdvancedControllersProperty().addListener((v, o, n) -> {
 			if (n) {
@@ -162,6 +175,41 @@ public class AdvancedControllerExtension implements QuPathExtension, GitHubProje
 			} else {
 				Dialogs.showInfoNotification("Advanced controllers", "Advanced controllers will be turned off whenever QuPath is restarted");
 			}
+		});
+
+		panel.addPropertyPreference(
+				invertControllerScrollingProperty(),
+				Boolean.class,
+				"Invert 3D mouse axes",
+				"Viewer",
+				"Invert X and Y axes on the 3D controller. People used to microscopes might like it better");
+		
+		// Try to turn on controllers, if required
+		if (getInvertControllerScrolling()) {
+			try {
+				// If we have an advanced input controller, try turning it on.
+				// Previously, we had a menu item... but here, we assume that if a controller is plugged in, then it's wanted.
+				// However, note that it doesn't like it if a controller is unplugged... in which case it won't work, even if it's plugged back in.
+				boolean isOn = AdvancedControllerActionFactory.tryToTurnOnAdvancedController(qupath);
+				if (isOn)
+					logger.info("Advanced controllers turned ON");
+				else
+					logger.debug("No advanced controllers found - try plugging one in and restarting QuPath if required");
+			} catch (Exception e) {
+				logger.error("Unable to load advanced controller support");
+				logger.debug("{}", e);
+			}
+		}
+
+		// Add a listener to handle property changes
+		invertControllerScrollingProperty().addListener((v, o, n) -> {
+			if (n) {
+                Dialogs.showInfoNotification("Advanced controllers", "X and Y axis are inverted");
+			} else {
+				Dialogs.showInfoNotification("Advanced controllers", "X and Y axis are non-inverted");
+			}
+            //invertControllerScrolling.set(n);
+            setInvertControllerScrolling(n);
 		});
 	}
 

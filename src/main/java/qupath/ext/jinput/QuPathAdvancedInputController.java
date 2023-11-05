@@ -27,6 +27,9 @@ import net.java.games.input.Component;
 import net.java.games.input.Controller;
 import qupath.lib.gui.QuPathGUI;
 import qupath.lib.gui.viewer.QuPathViewer;
+import qupath.lib.gui.prefs.PathPrefs;
+import javafx.beans.property.BooleanProperty;
+
 
 /**
  * 
@@ -45,11 +48,14 @@ public class QuPathAdvancedInputController {
 
 		private Controller controller;
 		private QuPathGUI qupath;
+        //private static BooleanProperty invertControllerScrolling = PathPrefs.createPersistentPreference("invertControllerScrolling", false);
 		
 		private double scrollScale = 10;
 		
 		private boolean zoomInPressed = false;
 		private boolean zoomOutPressed = false;
+
+        private boolean isInvertedScrolling = false;
 
         //We'll use these to compare new and old values
         private double old_dx = 0;
@@ -128,6 +134,7 @@ public class QuPathAdvancedInputController {
 			double serverMag = viewer.getServer().getMetadata().getMagnification();
 			double magnification = viewer.getMagnification();
 			double downsample = viewer.getDownsampleFactor();
+
 			// Assume x40 if no other info...
 			if (Double.isNaN(serverMag)) {
 				serverMag = 40;
@@ -143,6 +150,9 @@ public class QuPathAdvancedInputController {
 			else
 				scrollScale = 1000;
 
+            // Checking if we need to invert
+            if (PathPrefs.createPersistentPreference("invertControllerScrolling", false).get() == false)
+                scrollScale = -scrollScale;
 			
 			double dx = old_dx;
 			double dy = old_dy;
@@ -234,7 +244,7 @@ public class QuPathAdvancedInputController {
                         viewer.getCenterPixelY() + dy3);
             }
             
-            //System.out.println("rot:" + rot + " dx: " + dx + ", dy: " + dy + ", dz: " + dz + ", dr: " + dr + "scrollScale: "+scrollScale);
+            //System.out.println("rot:" + rot + " dx: " + dx + ", dy: " + dy + ", dz: " + dz + ", dr: " + dr + "scrollScale: " + scrollScale + "rot: " + rot);
 			return true;
 		}
 
