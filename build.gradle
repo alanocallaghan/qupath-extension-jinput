@@ -156,25 +156,28 @@ publishing {
             name = "GitHubPackages"
             url = "https://maven.pkg.github.com/zindy/qupath-extension-jinput"
             credentials {
-                username = System.getenv("GITHUB_ACTOR")
-                password = System.getenv("GITHUB_TOKEN")
+//                username = System.getenv("GITHUB_ACTOR")
+//                password = System.getenv("GITHUB_TOKEN")
+                  username = project.findProperty("gpr.user") ?: System.getenv("USERNAME")
+                  password = project.findProperty("gpr.key") ?: System.getenv("TOKEN")
+
             }          
         }
     }
 
     publications {
         mavenJava(MavenPublication) {
-            groupId = 'io.github.qupath'
+//            groupId = 'io.github.qupath'
             from components.java
 
-            pom {
-                licenses {
-                    license {
-                        name = 'Apache License v2.0'
-                        url = 'http://www.apache.org/licenses/LICENSE-2.0'
-                    }
-                }
-            }
+//            pom {
+//                licenses {
+//                    license {
+//                        name = 'Apache License v2.0'
+//                        url = 'http://www.apache.org/licenses/LICENSE-2.0'
+//                    }
+//                }
+//            }
         }
     }
 }
