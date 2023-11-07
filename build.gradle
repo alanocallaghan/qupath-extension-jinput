@@ -156,11 +156,8 @@ publishing {
             name = "GitHubPackages"
             url = "https://maven.pkg.github.com/zindy/qupath-extension-jinput"
             credentials {
-                username = System.getenv("GITHUB_ACTOR")
-                password = System.getenv("GITHUB_TOKEN")
-//                  username = project.findProperty("gpr.user") ?: System.getenv("USERNAME")
-//                  password = project.findProperty("gpr.key") ?: System.getenv("TOKEN")
-
+                username = "zindy"
+                password = project.findProperty("gpr.key") ?: System.getenv("JAVA_TOKEN")
             }          
         }
     }
