@@ -92,7 +92,7 @@ public class AdvancedControllerActionFactory {
 	 * @return
 	 */
 	private static List<Controller> getCompatibleControllers() {
-				ControllerEnvironment controllerEnvironment = ControllerEnvironment.getDefaultEnvironment(); 
+		ControllerEnvironment controllerEnvironment = ControllerEnvironment.getDefaultEnvironment();
 //		controllerEnvironment.addControllerListener(new ControllerListener() {
 //			public void controllerRemoved(ControllerEvent ev) {
 //				System.err.println("ADDED: " + ev);
@@ -107,12 +107,18 @@ public class AdvancedControllerActionFactory {
 //		});
 		Controller[] controllers = controllerEnvironment.getControllers();
 		List<Controller> advancedControllers = new ArrayList<>();
-		logger.trace("Looking for controllers"); 
+		logger.info("Looking for controllers, checking {}", controllers.length);
 		for (Controller controller : controllers) {
 			// For now, we only support 'Space Navigator' controllers... being more permissive can cause strange things to happen
 			// (in particular, things go very badly wrong with VirtualBox)
 //			if (controller.getType() == Type.STICK || !controller.getName().toLowerCase().contains("virtualbox")) {
 //			if (controller.getType() == Type.STICK && controller.getName().toLowerCase().equals("spacenavigator")) {
+			if (controller.getType() == Type.GAMEPAD) {
+				for (Component c : controller.getComponents()) {
+					logger.info("has: \"" + c.getName() + "\" is \"" + c.getIdentifier().toString() + "\"");
+				}
+				advancedControllers.add(controller);
+			}
 			if (controller.getType() == Type.STICK) {
 				logger.info("Registering controller: " + controller.getName() + ", " + controller.getType() ); 
 				for (Component c : controller.getComponents()) {
@@ -120,7 +126,7 @@ public class AdvancedControllerActionFactory {
 				}
 				advancedControllers.add(controller);
 			} else
-				logger.trace("Skipping controller: " + controller.getName() + ", " + controller.getType() ); 
+				logger.info("Skipping controller: " + controller.getName() + ", " + controller.getType() );
 		}
 		return advancedControllers;
 	}
@@ -129,13 +135,13 @@ public class AdvancedControllerActionFactory {
 	
 	static class ControllerChangeListener implements ChangeListener<Boolean> {
 		
-		private QuPathGUI qupath;
-		private int heartbeat = 25;
+		private final QuPathGUI qupath;
+		private final int heartbeat = 20;
 		
-		private List<QuPathAdvancedInputController> advancedControllers = new ArrayList<>();
+		private final List<QuPathAdvancedController> advancedControllers = new ArrayList<>();
 		private Timeline timeline;
 		
-		private BooleanProperty controllerOn = new SimpleBooleanProperty();
+		private final BooleanProperty controllerOn = new SimpleBooleanProperty();
 		
 		ControllerChangeListener(final QuPathGUI qupath) {
 			this.qupath = qupath;
@@ -157,9 +163,9 @@ public class AdvancedControllerActionFactory {
 						new KeyFrame(
 								Duration.ZERO,
 								actionEvent -> {
-									Iterator<QuPathAdvancedInputController> iter = advancedControllers.iterator();
+									Iterator<QuPathAdvancedController> iter = advancedControllers.iterator();
 									while (iter.hasNext()) {
-										QuPathAdvancedInputController controller = iter.next();
+										QuPathAdvancedController controller = iter.next();
 										if (!controller.updateViewer()) {
 											iter.remove();
 											logger.error("Controller {} has been unplugged!", controller.getControllerName());
@@ -203,7 +209,11 @@ public class AdvancedControllerActionFactory {
 			
 			advancedControllers.clear(); // Just to be sure...
 			for (Controller controller : getCompatibleControllers()) {
-				advancedControllers.add(new QuPathAdvancedInputController(controller, qupath, heartbeat));
+				if (controller.getType() == Type.GAMEPAD) {
+					advancedControllers.add(new QuPathAdvancedGamepadController(controller, qupath, heartbeat));
+				} else {
+					advancedControllers.add(new QuPathAdvancedStickController(controller, qupath, heartbeat));
+				}
 			}
 			if (advancedControllers.isEmpty()) {
 				logger.error("No advanced controller found!");

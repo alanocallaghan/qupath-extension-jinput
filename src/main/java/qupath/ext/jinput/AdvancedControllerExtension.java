@@ -71,13 +71,15 @@ import qupath.lib.gui.prefs.PathPrefs;
  */
 public class AdvancedControllerExtension implements QuPathExtension, GitHubProject {
 	
-	private static Logger logger = LoggerFactory.getLogger(AdvancedControllerExtension.class);
+	private static final Logger logger = LoggerFactory.getLogger(AdvancedControllerExtension.class);
 
 	
 	// Request attempting to load 3D mouse support... needs to be restarted & the mouse plugged in to take effect
 	// (And adds ~0.7s to startup time on test Mac Pro)
-	private static BooleanProperty requestAdvancedControllers = PathPrefs.createPersistentPreference("requestAdvancedControllers", false);
-	private static BooleanProperty invertControllerScrolling = PathPrefs.createPersistentPreference("invertControllerScrolling", false);
+	private static final BooleanProperty requestAdvancedControllers = PathPrefs.createPersistentPreference("requestAdvancedControllers", true);
+	private static final BooleanProperty invertControllerScrolling = PathPrefs.createPersistentPreference("invertControllerScrolling", false);
+	private final String description = "Add support for advanced input controllers (e.g. 3D mice for slide navigation) using JInput - https://java.net/projects/jinput";
+	private final String name = "Advanced controllers extension";
 
 	public static BooleanProperty requestAdvancedControllersProperty() {
 		return requestAdvancedControllers;
@@ -330,13 +332,12 @@ public class AdvancedControllerExtension implements QuPathExtension, GitHubProje
 
 	@Override
 	public String getName() {
-		return "Advanced controllers extension";
+		return name;
 	}
 
 	@Override
 	public String getDescription() {
-		String description = "Add support for advanced input controllers (e.g. 3D mice for slide navigation) using JInput - https://java.net/projects/jinput";
-		return description;
+        return description;
 /*
 		if (isOn)
 			return description + "\n(Currently on)";

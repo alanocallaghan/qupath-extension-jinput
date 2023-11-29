@@ -1,8 +1,9 @@
 plugins {
-  id 'java-library'
-  id 'maven-publish'
-  // To create a shadow/fat jar, including dependencies
-  id 'com.github.johnrengelman.shadow' version '7.0.0'
+    id 'java-library'
+    id 'maven-publish'
+    // To create a shadow/fat jar, including dependencies
+    id 'com.github.johnrengelman.shadow' version '7.0.0'
+    id 'org.openjfx.javafxplugin' version '0.1.0'
 }
 
 repositories {
@@ -23,6 +24,7 @@ repositories {
 
 ext.moduleName = 'qupath.extension.jinput'
 ext.qupathVersion = gradle.ext.qupathVersion
+ext.qupathJavaVersion = 17
 ext.jinputVersion = "2.0.9"
 
 description = "QuPath extension to support the spacemouse (and possibly other 3-D input devices)."
@@ -78,9 +80,9 @@ jar.dependsOn extractNativeLibs
  * Ensure Java 11 compatibility
  */
 java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(11)
-    }
+//    toolchain {
+//        languageVersion = JavaLanguageVersion.of(qupathJavaVersion)
+//    }
     if (project.properties['sources'])
         withSourcesJar()
     if (project.properties['javadocs'])
