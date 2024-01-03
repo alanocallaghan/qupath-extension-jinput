@@ -1,5 +1,7 @@
 package qupath.ext.jinput;
 
+import net.java.games.input.Controller;
+
 public interface QuPathAdvancedController {
 
         String getControllerName();
@@ -12,4 +14,6 @@ public interface QuPathAdvancedController {
          * @return
          */
         boolean updateViewer();
+
+        Controller getController();
 }

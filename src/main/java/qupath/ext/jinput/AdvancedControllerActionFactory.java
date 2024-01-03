@@ -55,7 +55,8 @@ import net.java.games.input.Component;
 public class AdvancedControllerActionFactory {
 
 	final private static Logger logger = LoggerFactory.getLogger(AdvancedControllerActionFactory.class);
-	
+	private static ControllerChangeListener controllerChangeListener = null;
+
 	/**
 	 * Attempt to turn on advanced controller, if any can be found.
 	 * 
@@ -69,12 +70,18 @@ public class AdvancedControllerActionFactory {
 	 * @return
 	 */
 	public static boolean tryToTurnOnAdvancedController(final QuPathGUI qupath) {
-		if (hasAdvancedControllers())
-			return new ControllerChangeListener(qupath).turnOnController();
+		if (hasAdvancedControllers()) {
+			controllerChangeListener = new ControllerChangeListener(qupath);
+			controllerChangeListener.turnOnController();
+			return true;
+		}
 		return false;
 	}
 	
-	
+	public static ControllerChangeListener getChangeListener() {
+		return controllerChangeListener;
+	}
+
 	/**
 	 * Returns true if there are advanced controllers present, so it's worth adding a menu item.
 	 * 
@@ -84,28 +91,13 @@ public class AdvancedControllerActionFactory {
 		return !getCompatibleControllers().isEmpty();
 	}
 	
-	
-	
 	/**
 	 * Get controllers from JInput that would be suitable
 	 * 
 	 * @return
 	 */
 	private static List<Controller> getCompatibleControllers() {
-		ControllerEnvironment controllerEnvironment = ControllerEnvironment.getDefaultEnvironment();
-//		controllerEnvironment.addControllerListener(new ControllerListener() {
-//			public void controllerRemoved(ControllerEvent ev) {
-//				System.err.println("ADDED: " + ev);
-//			}
-//
-//		    /**
-//		     * Invoked when a controller has been added.
-//		     */
-//		    public void controllerAdded(ControllerEvent ev) {
-//				System.err.println("REMOVED: " + ev);
-//		    }
-//		});
-		Controller[] controllers = controllerEnvironment.getControllers();
+		Controller[] controllers = getControllers();
 		List<Controller> advancedControllers = new ArrayList<>();
 		logger.info("Looking for controllers, checking {}", controllers.length);
 		for (Controller controller : controllers) {
@@ -130,9 +122,12 @@ public class AdvancedControllerActionFactory {
 		}
 		return advancedControllers;
 	}
-	
-	
-	
+
+	private static Controller[] getControllers() {
+		ControllerEnvironment controllerEnvironment = ControllerEnvironment.getDefaultEnvironment();
+        return controllerEnvironment.getControllers();
+	}
+
 	static class ControllerChangeListener implements ChangeListener<Boolean> {
 		
 		private final QuPathGUI qupath;
@@ -146,8 +141,7 @@ public class AdvancedControllerActionFactory {
 		ControllerChangeListener(final QuPathGUI qupath) {
 			this.qupath = qupath;
 		}
-		
-		
+
 		@Override
 		public void changed(ObservableValue<? extends Boolean> observable, Boolean oldValue, Boolean newValue) {
 			if (newValue) {
@@ -187,13 +181,11 @@ public class AdvancedControllerActionFactory {
 		private boolean isControllerOn() {
 			return timeline != null && timeline.getStatus() == Status.RUNNING;
 		}
-		
-		
+
 		ObservableBooleanValue controllerOnProperty() {
 			return controllerOn;
 		}
-		
-		
+
 		void turnOffController() {
 			if (timeline != null) {
 				timeline.stop();
@@ -201,8 +193,7 @@ public class AdvancedControllerActionFactory {
 				controllerOn.set(true);
 			}
 		}
-		
-		
+
 		boolean turnOnController() {
 			if (isControllerOn())
 				return true;
@@ -228,8 +219,12 @@ public class AdvancedControllerActionFactory {
 			return true;
 		}
 		
-		
+		public QuPathAdvancedController getController() {
+			if (advancedControllers.size() > 1) {
+				logger.warn("More than one controller (" + advancedControllers.size() + "), returning the first...");
+			}
+			return advancedControllers.get(0);
+		}
 	}
-	
 
 }

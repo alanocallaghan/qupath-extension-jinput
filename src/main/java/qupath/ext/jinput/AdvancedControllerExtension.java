@@ -23,8 +23,6 @@
 
 package qupath.ext.jinput;
 
-import java.awt.Point;
-import java.awt.geom.Point2D.Float;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -32,30 +30,32 @@ import java.net.URL;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.ResourceBundle;
 import java.util.function.BiPredicate;
-import java.util.stream.Collectors;
 
+import javafx.scene.Scene;
+import javafx.scene.control.MenuItem;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.GridPane;
+import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javafx.beans.property.BooleanProperty;
+import qupath.fx.prefs.controlsfx.PropertyItemBuilder;
 import qupath.lib.common.GeneralTools;
 import qupath.lib.gui.QuPathGUI;
+import qupath.fx.dialogs.Dialogs;
 import qupath.lib.gui.extensions.GitHubProject;
 import qupath.lib.gui.extensions.QuPathExtension;
-//import qupath.lib.gui.viewer.tools.QuPathPenManager;
-//import qupath.lib.gui.viewer.tools.QuPathPenManager.PenInputManager;
 
-import qupath.lib.gui.dialogs.Dialogs;
 import qupath.lib.gui.panes.PreferencePane;
 import qupath.lib.gui.prefs.PathPrefs;
-//import qupath.ext.jinput.AdvancedControllerActionFactory;
 
 /**
  * QuPath extension to add advanced input controller support for browsing whole slide images, 
@@ -70,16 +70,16 @@ import qupath.lib.gui.prefs.PathPrefs;
  *
  */
 public class AdvancedControllerExtension implements QuPathExtension, GitHubProject {
-	
+	private final static ResourceBundle resources = ResourceBundle.getBundle("qupath.ext.jinput.strings");
 	private static final Logger logger = LoggerFactory.getLogger(AdvancedControllerExtension.class);
 
-	
 	// Request attempting to load 3D mouse support... needs to be restarted & the mouse plugged in to take effect
 	// (And adds ~0.7s to startup time on test Mac Pro)
 	private static final BooleanProperty requestAdvancedControllers = PathPrefs.createPersistentPreference("requestAdvancedControllers", true);
 	private static final BooleanProperty invertControllerScrolling = PathPrefs.createPersistentPreference("invertControllerScrolling", false);
-	private final String description = "Add support for advanced input controllers (e.g. 3D mice for slide navigation) using JInput - https://java.net/projects/jinput";
-	private final String name = "Advanced controllers extension";
+	private final static String EXTENSION_NAME = resources.getString("extension.title");
+	private final static String EXTENSION_DESCRIPTION = resources.getString("extension.description");
+	private final static String EXTENSION_QUPATH_VERSION = resources.getString("extension.qupath.version");
 
 	public static BooleanProperty requestAdvancedControllersProperty() {
 		return requestAdvancedControllers;
@@ -139,16 +139,21 @@ public class AdvancedControllerExtension implements QuPathExtension, GitHubProje
 			return;
 		}
 		alreadyInstalled = true;
-		
+		addMenuItem(qupath);
+
 		// Add preference
+		// todo: move me
 		PreferencePane panel = qupath.getPreferencePane();
-		panel.addPropertyPreference(
-				requestAdvancedControllersProperty(),
-				Boolean.class,
-				"3D mouse support",
-				"Viewer",
-				"Try to add support for 3D mice - requires QuPath to be restarted to have an effect");
-		
+		panel.getPropertySheet().getItems().add(
+				new PropertyItemBuilder<>(
+						requestAdvancedControllersProperty(),
+						Boolean.class)
+				.bundle("qupath.ext.jinput.strings")
+				.key("menu.title")
+				.category(resources.getString("extension.title"))
+				.build()
+		);
+
 		// Try to turn on controllers, if required
 		if (getRequestAdvancedControllers()) {
 			try {
@@ -161,31 +166,42 @@ public class AdvancedControllerExtension implements QuPathExtension, GitHubProje
 				else
 					logger.debug("No advanced controllers found - try plugging one in and restarting QuPath if required");
 			} catch (Exception e) {
-				logger.error("Unable to load advanced controller support");
-				logger.debug("{}", e);
+				logger.error("Unable to load advanced controller support", e);
 			}
 		}
 
 		// Add a listener to handle property changes
+		// todo: notifs redundant
 		requestAdvancedControllersProperty().addListener((v, o, n) -> {
 			if (n) {
 				if (AdvancedControllerActionFactory.tryToTurnOnAdvancedController(qupath)) {
-					Dialogs.showInfoNotification("Advanced controllers", "Advanced controllers now turned on");
+					Dialogs.showInfoNotification(
+							resources.getString("extension.title"),
+							resources.getString("notif.extensionOn"));
 				} else {
-					Dialogs.showErrorNotification("Advanced controller error", "No advanced controllers found - try plugging one in and restarting QuPath if required");
+					Dialogs.showErrorNotification(
+							resources.getString("extension.title"),
+							resources.getString("notif.noControllers"));
 				}
 			} else {
-				Dialogs.showInfoNotification("Advanced controllers", "Advanced controllers will be turned off whenever QuPath is restarted");
+				Dialogs.showInfoNotification(
+						resources.getString("extension.title"),
+						resources.getString("notif.extensionOff")
+				);
 			}
 		});
 
-		panel.addPropertyPreference(
-				invertControllerScrollingProperty(),
-				Boolean.class,
-				"Invert 3D mouse axes",
-				"Viewer",
-				"Invert X and Y axes on the 3D controller. People used to microscopes might like it better");
-		
+		// todo: move me (parsed items?)
+		panel.getPropertySheet().getItems().add(
+				new PropertyItemBuilder<>(
+						invertControllerScrollingProperty(),
+						Boolean.class)
+						.bundle("qupath.ext.jinput.strings")
+						.key("invert")
+						.category(resources.getString("extension.title"))
+						.build()
+		);
+
 		// Try to turn on controllers, if required
 		if (getInvertControllerScrolling()) {
 			try {
@@ -198,21 +214,49 @@ public class AdvancedControllerExtension implements QuPathExtension, GitHubProje
 				else
 					logger.debug("No advanced controllers found - try plugging one in and restarting QuPath if required");
 			} catch (Exception e) {
-				logger.error("Unable to load advanced controller support");
-				logger.debug("{}", e);
+				logger.error("Unable to load advanced controller support", e);
 			}
 		}
 
 		// Add a listener to handle property changes
+		// todo: notifs redundant
 		invertControllerScrollingProperty().addListener((v, o, n) -> {
 			if (n) {
-                Dialogs.showInfoNotification("Advanced controllers", "X and Y axis are inverted");
+                Dialogs.showInfoNotification(resources.getString("extension.title"),
+						resources.getString("notif.inverted"));
 			} else {
-				Dialogs.showInfoNotification("Advanced controllers", "X and Y axis are non-inverted");
+				Dialogs.showInfoNotification(
+						resources.getString("extension.title"),
+						resources.getString("notif.nonInverted"));
 			}
             //invertControllerScrolling.set(n);
             setInvertControllerScrolling(n);
 		});
+	}
+
+	private void addMenuItem(QuPathGUI qupath) {
+		var menu = qupath.getMenu("Extensions>" + EXTENSION_NAME, true);
+		MenuItem menuItem = new MenuItem(resources.getString("extension.title"));
+		menuItem.setOnAction(e -> {
+			// todo: if one controller is found
+			// todo: make a big stage/scene/pane
+			// todo: loop through all controls
+			// todo: create either a digital or analog visual representation
+
+			Stage stage = new Stage();
+			BorderPane pane = new BorderPane();
+			FlowPane flowPane = new FlowPane();
+			Scene scene = new Scene(flowPane);
+			stage.setScene(scene);
+
+			var controller = AdvancedControllerActionFactory.getChangeListener().getController().getController();
+			var components = controller.getComponents();
+			for (var component: components) {
+				flowPane.getChildren().add(new ComponentVisualisation(component));
+			}
+			stage.show();
+		});
+		menu.getItems().add(menuItem);
 	}
 
 	/**
@@ -220,11 +264,9 @@ public class AdvancedControllerExtension implements QuPathExtension, GitHubProje
 	 * @throws URISyntaxException
 	 * @throws IOException
 	 * @throws SecurityException
-	 * @throws NoSuchFieldException
-	 * @throws IllegalAccessException
 	 * @throws IllegalArgumentException
 	 */
-	private static boolean loadNativeLibrary() throws URISyntaxException, IOException, NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+	private static boolean loadNativeLibrary() throws URISyntaxException, IOException, SecurityException, IllegalArgumentException {
 
 		if (nativeLibraryLoaded) {
 			logger.info("Native library already loaded, skipping");
@@ -244,7 +286,7 @@ public class AdvancedControllerExtension implements QuPathExtension, GitHubProje
 				tempDirPath = extractLibs(pathRoot);
 			}
 		} else {
-			//FIXME Not sure what to put here...
+			// FIXME Not sure what to put here...
 			//path = Files.find(Paths.get(uri), 1, createMatcher()).findFirst().orElse(null);
 			return false;
 		}
@@ -282,8 +324,10 @@ public class AdvancedControllerExtension implements QuPathExtension, GitHubProje
 	 * @throws IOException
 	 */
 	private static Path extractLibs(Path pathRoot) throws IOException {
-        List<Path> fileList = Files.find(pathRoot, 1, createMatcher())
-            .collect(Collectors.toList());
+		List<Path> fileList;
+		try (var find = Files.find(pathRoot, 1, createMatcher())) {
+			fileList = find.toList();
+		}
 
         if (fileList.isEmpty()) {
 			logger.debug("Could not find any compatible native files in the JAR");
@@ -332,17 +376,12 @@ public class AdvancedControllerExtension implements QuPathExtension, GitHubProje
 
 	@Override
 	public String getName() {
-		return name;
+		return EXTENSION_NAME;
 	}
 
 	@Override
 	public String getDescription() {
-        return description;
-/*
-		if (isOn)
-			return description + "\n(Currently on)";
-		return description + "\n(Currently off)";
-*/
+        return EXTENSION_DESCRIPTION;
 	}
 
 }

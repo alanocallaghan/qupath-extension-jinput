@@ -45,16 +45,14 @@ import qupath.lib.gui.prefs.PathPrefs;
  */
 public class QuPathAdvancedStickController implements QuPathAdvancedController {
 
-	private Controller controller;
-	private QuPathGUI qupath;
+	private final Controller controller;
+	private final QuPathGUI qupath;
 	//private static BooleanProperty invertControllerScrolling = PathPrefs.createPersistentPreference("invertControllerScrolling", false);
-
-	private double scrollScale = 10;
 
 	private boolean zoomInPressed = false;
 	private boolean zoomOutPressed = false;
 
-	private boolean isInvertedScrolling = false;
+	private final boolean isInvertedScrolling = false;
 
 	//We'll use these to compare new and old values
 	private double old_dx = 0;
@@ -102,11 +100,9 @@ public class QuPathAdvancedStickController implements QuPathAdvancedController {
 	}
 
 	/**
-	 * Return true if the update is successful and the controller remains in a valid state, false otherwise.
-	 *
-	 * If false is returned, then the controller may be stopped.
-	 *
-	 * @return
+	 * Try to poll the controller to update the viewer.
+	 * @return true if the update is successful and the controller remains in a valid state, false otherwise.
+	 * 	 * If false is returned, then the controller may be stopped.
 	 */
 	@Override
 	public boolean updateViewer() {
@@ -141,6 +137,7 @@ public class QuPathAdvancedStickController implements QuPathAdvancedController {
 			magnification = serverMag / downsample;
 		}
 
+		double scrollScale = 10;
 		if (magnification > 80)
 			scrollScale = 25;
 		else if (magnification > 40)
@@ -151,7 +148,7 @@ public class QuPathAdvancedStickController implements QuPathAdvancedController {
 			scrollScale = 1000;
 
 		// Checking if we need to invert
-		if (PathPrefs.createPersistentPreference("invertControllerScrolling", false).get() == false)
+		if (!PathPrefs.createPersistentPreference("invertControllerScrolling", false).get())
 			scrollScale = -scrollScale;
 
 		double dx = old_dx;
@@ -249,4 +246,8 @@ public class QuPathAdvancedStickController implements QuPathAdvancedController {
 		return true;
 	}
 
+	@Override
+	public Controller getController() {
+		return controller;
+	}
 }

@@ -10,14 +10,14 @@ import java.awt.*;
 
 public class QuPathAdvancedGamepadController implements QuPathAdvancedController {
 
-    private Controller controller;
-    private QuPathGUI qupath;
+    private final Controller controller;
+    private final QuPathGUI qupath;
     //private static BooleanProperty invertControllerScrolling = PathPrefs.createPersistentPreference("invertControllerScrolling", false);
 
     private boolean zoomInPressed = false;
     private boolean zoomOutPressed = false;
 
-    private boolean isInvertedScrolling = false;
+    private final boolean isInvertedScrolling = false;
 
 
 //		private long lastTimestamp = 0;
@@ -60,11 +60,9 @@ public class QuPathAdvancedGamepadController implements QuPathAdvancedController
     }
 
     /**
-     * Return true if the update is successful and the controller remains in a valid state, false otherwise.
-     *
+     * Try to poll the controller and use it to update the viewer.
+     * @return true if the update is successful and the controller remains in a valid state, false otherwise.
      * If false is returned, then the controller may be stopped.
-     *
-     * @return
      */
     @Override
     public boolean updateViewer() {
@@ -190,6 +188,11 @@ public class QuPathAdvancedGamepadController implements QuPathAdvancedController
 
         //System.out.println("rot:" + rot + " dx: " + dx + ", dy: " + dy + ", dz: " + dz + ", dr: " + dr + "scrollScale: " + scrollScale + "rot: " + rot);
         return true;
+    }
+
+    @Override
+    public Controller getController() {
+        return controller;
     }
 
 }
